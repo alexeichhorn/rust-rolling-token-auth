@@ -1,5 +1,86 @@
-pub fn add(left: u64, right: u64) -> u64 {
-    left + right
+use hmac::{Hmac, Mac};
+use sha2::Sha256;
+use std::time::{SystemTime, UNIX_EPOCH};
+
+type HmacSha256 = Hmac<Sha256>;
+
+#[derive(Clone)]
+pub struct Token {
+    token: String,
+    timestamp: i64,
+}
+
+impl Token {
+    fn get_offset(&self, manager: &RollingTokenManager) -> i64 {
+        self.timestamp - manager.current_timestamp()
+    }
+}
+
+pub struct RollingTokenManager {
+    secret: Vec<u8>,
+    interval: i64,
+    tolerance: i64,
+    active_tokens: Vec<Token>,
+}
+
+impl RollingTokenManager {
+    pub fn new(secret: impl Into<Vec<u8>>, interval: i64, tolerance: Option<i64>) -> Self {
+        Self {
+            secret: secret.into(),
+            interval,
+            tolerance: tolerance.unwrap_or(1),
+            active_tokens: Vec::new(),
+        }
+    }
+
+    fn current_timestamp(&self) -> i64 {
+        SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs() as i64 / self.interval
+    }
+
+    pub fn generate_token(&self, offset: i64) -> Token {
+        let timestamp = self.current_timestamp() + offset;
+        let encoded_timestamp = timestamp.to_string();
+
+        let mut mac = HmacSha256::new_from_slice(&self.secret).expect("HMAC can take key of any size");
+
+        mac.update(encoded_timestamp.as_bytes());
+        let result = mac.finalize();
+        let token = hex::encode(result.into_bytes());
+
+        Token { token, timestamp }
+    }
+
+    pub fn refresh_tokens(&mut self) {
+        let current_time = self.current_timestamp();
+
+        // Remove tokens outside tolerance
+        self.active_tokens
+            .retain(|token| (token.timestamp - current_time).abs() <= self.tolerance);
+
+        if self.active_tokens.len() as i64 == 1 + 2 * self.tolerance {
+            return;
+        }
+
+        // Create a set of timestamps we need to generate
+        let mut needed_timestamps: Vec<i64> = (-self.tolerance..=self.tolerance).map(|offset| current_time + offset).collect();
+
+        // Remove timestamps we already have
+        for token in &self.active_tokens {
+            needed_timestamps.retain(|&t| t != token.timestamp);
+        }
+
+        // Generate missing tokens
+        for timestamp in needed_timestamps {
+            let offset = timestamp - current_time;
+            let token = self.generate_token(offset);
+            self.active_tokens.push(token);
+        }
+    }
+
+    pub fn is_valid(&mut self, token: &str) -> bool {
+        self.refresh_tokens();
+        self.active_tokens.iter().any(|t| t.token == token)
+    }
 }
 
 #[cfg(test)]
@@ -7,8 +88,15 @@ mod tests {
     use super::*;
 
     #[test]
-    fn it_works() {
-        let result = add(2, 2);
-        assert_eq!(result, 4);
+    fn test_token_validation() {
+        let mut manager = RollingTokenManager::new("test_secret", 30, Some(1));
+        let token = manager.generate_token(0);
+        assert!(manager.is_valid(&token.token));
+    }
+
+    #[test]
+    fn test_invalid_token() {
+        let mut manager = RollingTokenManager::new("test_secret", 30, Some(1));
+        assert!(!manager.is_valid("invalid_token"));
     }
 }
