@@ -50,7 +50,7 @@ impl RollingTokenManager {
         Token { token, timestamp }
     }
 
-    pub fn refresh_tokens(&mut self) {
+    fn refresh_tokens(&mut self) {
         let current_time = self.current_timestamp();
 
         // Remove tokens outside tolerance
@@ -92,6 +92,7 @@ mod tests {
         let mut manager = RollingTokenManager::new("test_secret", 30, Some(1));
         let token = manager.generate_token(0);
         assert!(manager.is_valid(&token.token));
+        assert!(token.get_offset(&manager) == 0);
     }
 
     #[test]
