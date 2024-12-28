@@ -2,6 +2,13 @@
 name = "rolling-token-auth"
 version = "0.1.0"
 edition = "2021"
+description = "A simple and secure rolling token authentication system using HMAC-SHA256"
+license = "MIT"
+repository = "https://github.com/YOUR_USERNAME/rust-rolling-token-auth"
+documentation = "https://docs.rs/rolling-token-auth"
+readme = "README.md"
+keywords = ["authentication", "token", "security", "hmac", "rolling"]
+categories = ["authentication", "cryptography"]
 
 [dependencies]
 hex = "^0.4"
