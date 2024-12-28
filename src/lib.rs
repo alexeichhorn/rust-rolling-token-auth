@@ -4,10 +4,10 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 type HmacSha256 = Hmac<Sha256>;
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct Token {
-    token: String,
-    timestamp: i64,
+    pub token: String,
+    pub timestamp: i64,
 }
 
 impl Token {
@@ -16,6 +16,7 @@ impl Token {
     }
 }
 
+#[derive(Clone)]
 pub struct RollingTokenManager {
     secret: Vec<u8>,
     interval: i64,

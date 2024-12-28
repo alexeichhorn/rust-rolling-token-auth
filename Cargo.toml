@@ -1,10 +1,10 @@
 [package]
 name = "rolling-token-auth"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2021"
 description = "A simple and secure rolling token authentication system using HMAC-SHA256"
 license = "MIT"
-repository = "https://github.com/YOUR_USERNAME/rust-rolling-token-auth"
+repository = "https://github.com/alexeichhorn/rust-rolling-token-auth"
 documentation = "https://docs.rs/rolling-token-auth"
 readme = "README.md"
 keywords = ["authentication", "token", "security", "hmac", "rolling"]
