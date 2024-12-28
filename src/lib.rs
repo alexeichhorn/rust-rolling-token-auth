@@ -37,7 +37,7 @@ impl RollingTokenManager {
         SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs() as i64 / self.interval
     }
 
-    pub fn generate_token(&self, offset: i64) -> Token {
+    pub fn generate_token_with_offset(&self, offset: i64) -> Token {
         let timestamp = self.current_timestamp() + offset;
         let encoded_timestamp = timestamp.to_string();
 
@@ -48,6 +48,10 @@ impl RollingTokenManager {
         let token = hex::encode(result.into_bytes());
 
         Token { token, timestamp }
+    }
+
+    pub fn generate_token(&self) -> Token {
+        self.generate_token_with_offset(0)
     }
 
     fn refresh_tokens(&mut self) {
@@ -72,7 +76,7 @@ impl RollingTokenManager {
         // Generate missing tokens
         for timestamp in needed_timestamps {
             let offset = timestamp - current_time;
-            let token = self.generate_token(offset);
+            let token = self.generate_token_with_offset(offset);
             self.active_tokens.push(token);
         }
     }
@@ -90,9 +94,17 @@ mod tests {
     #[test]
     fn test_token_validation() {
         let mut manager = RollingTokenManager::new("test_secret", 30, Some(1));
-        let token = manager.generate_token(0);
+        let token = manager.generate_token();
         assert!(manager.is_valid(&token.token));
         assert!(token.get_offset(&manager) == 0);
+
+        let token_offset_1 = manager.generate_token_with_offset(1);
+        assert!(manager.is_valid(&token_offset_1.token));
+        assert!(token_offset_1.get_offset(&manager) == 1);
+
+        let token_offset_2 = manager.generate_token_with_offset(2);
+        assert!(!manager.is_valid(&token_offset_2.token)); // token is too far in the future -> invalid
+        assert!(token_offset_2.get_offset(&manager) == 2);
     }
 
     #[test]
